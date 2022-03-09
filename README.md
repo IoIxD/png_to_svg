@@ -14,3 +14,6 @@ Demonstration on a 2048x1536 display:
 Requires go 1.17. It exclusively uses libraries built into golang, so in theory, you should be able to do `go build main.go` and get an executable for your operating system.
 
 As you might guess by that last paragraph, it's a terminal application. The only arguments it takes are images to convert, and wildcards are supported so you can convert an entire folder of pngs.
+
+# Known limitations
+* Perfect blacks don't get rendered. This is not a bug, but a solution to a bug. I should eventually fix this, but in the mean time you will need to modify your images to use very dark grays instead
