@@ -9,3 +9,8 @@ Demonstration on a 2048x1536 display:
 ![demonstartion](https://ioi-xd.net/files/demonstration.png)
 
 ...oh yeah, except for the fact that it's still technically antialiased, and shapeRendering it actually makes it look a bit worse then turning anti aliasing off on a png. Because of the nature of SVG, though, it is *less* blurry, and on higher screens the blur is barely noticable to most people (unless they take a screenshot of the screen and zoom in). You might consider a solution where you display pngs at lower resolutions, but this is actually not necessary because the anti aliasing only happens on screens above 1080p. Sadly, this is obviously not a perfect solution, but with the advent of higher res displays, it's certainly the best way forward.
+  
+# Compiling/Usage
+Requires go 1.17. It exclusively uses libraries built into golang, so in theory, you should be able to do `go build main.go` and get an executable for your operating system.
+
+As you might guess by that last paragraph, it's a terminal application. The only arguments it takes are images to convert, and wildcards are supported so you can convert an entire folder of pngs.
