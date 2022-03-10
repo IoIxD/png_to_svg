@@ -18,4 +18,4 @@ As you might guess by that last paragraph, it's a terminal application. The only
 # Known limitations
 * Perfect blacks don't get rendered. This is not a bug, but a solution to a bug. I should eventually fix this, but in the mean time you will need to modify your images to use very dark grays instead
 * Only PNGs are supported. GIFs (non-animated) and JPEGs will be supported later.
-* Transparent images work best, there is an inconsistent bug where if the rightmost column of pixels isn't transparent then the resulting image is corrupted
+* Transparent images work best, **there is an inconsistent bug where if the rightmost column of pixels isn't transparent then the resulting image is corrupted**
