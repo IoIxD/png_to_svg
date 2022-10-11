@@ -82,25 +82,34 @@ fn svg_from_file(file: String) -> Result<String, Error> {
     let mut svg_defs = SVGDefs::new();
 
     // buffer for storing the last rgb value we got.
-    let (mut last_r, mut last_g, mut last_b, mut last_a): (u16, u16, u16, u16)
-     = (300, 300, 300, 300);
+    let (mut last_r, mut last_g, mut last_b, mut last_a): (u8, u8, u8, u8) = (0,0,0,0);
     let mut cur_width: u32 = 1;
     let (mut last_x, mut last_y): (u32, u32) = (0,0);
+    
+    let mut compare_to_last: bool = false;
 
     let mut making_box: bool = false;
 
     for y in 0..height {
         for x in 0..width {
             let pixels = img.get_pixel(x, y);
-            let (r, g, b, a) = (pixels[0] as u16, pixels[1] as u16, 
-                                pixels[2] as u16, pixels[3] as u16);
+            let (r, g, b, a) = (pixels[0], pixels[1],  pixels[2], pixels[3]);
+            
+            // don't do anything if we're on the first pixel.
+            if !compare_to_last {
+                (last_r, last_g, last_b, last_a) = (r, g, b, a);
+                (last_x, last_y) = (x,y);
+                compare_to_last = true;
+                continue;
+            }
+
             // don't process shit if we're on a transparent pixel
-            // (unless that last pixel we checked wasn't transparento)
+            // (unless that last pixel we checked wasn't transparent)
             if a > 0 || last_a > 0 {
                 // if what we have is different from what is stored, 
                 // or the width of what we have is larger then the image,
                 // make a new box
-                if r != last_r && g != last_g && b != last_b {
+                if r != last_r || g != last_g || b != last_b {
                     // first though, check if there's a definition that matches they box.
                     svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
                     making_box = false;
@@ -119,7 +128,8 @@ fn svg_from_file(file: String) -> Result<String, Error> {
             svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
             making_box = false;
             cur_width = 1;
-            (last_r, last_g, last_b, last_a) = (300, 300, 300, 300);
+            (last_r, last_g, last_b, last_a) = (0,0,0,0);
+            compare_to_last = true;
             (last_x, last_y) = (0,y);
         }
     };
@@ -150,38 +160,30 @@ fn get_files() -> Vec<String> {
     }).collect()
 }
 
-fn new_box(width: u32, x: u32, y: u32, r: u16, g: u16, b: u16, svg_defs: &mut SVGDefs) -> String {
-    if r+g+b >= 255*3 {
-        format!("")
-    } else {
-        let line = new_box_without_pos(width, r, g, b);
-        match svg_defs.contains(&line) {
-            // if there is a line...
-            Some(mut a) => {
-                a.to_use_string(x,y)
-            },
-            // if there isn't.
-            None => {
-                svg_defs.add(&line);
-                format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>",
-            width as f32+0.2,1.2,x,y,rgb_to_hex(r,g,b))
-            }
+fn new_box(width: u32, x: u32, y: u32, r: u8, g: u8, b: u8, svg_defs: &mut SVGDefs) -> String {
+    let line = new_box_without_pos(width, r, g, b);
+    match svg_defs.contains(&line) {
+        // if there is a line...
+        Some(mut a) => {
+            a.to_use_string(x,y)
+        },
+        // if there isn't.
+        None => {
+            svg_defs.add(&line);
+            format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>",
+        width as f32+0.2,1.2,x,y,rgb_to_hex(r,g,b))
         }
     }
     
 }
 
-fn new_box_without_pos(width: u32, r: u16, g: u16, b: u16) -> String {
-    if r+g+b >= 255*3 {
-        format!("")
-    } else {
-        format!("<rect width='{}' height='{}' fill='{}'></rect>",
+fn new_box_without_pos(width: u32, r: u8, g: u8, b: u8) -> String {
+    format!("<rect width='{}' height='{}' fill='{}'></rect>",
             width as f32+0.2,1.2,rgb_to_hex(r,g,b))
-    }
 }
 
 #[inline(always)]
-fn rgb_to_hex(r: u16, g: u16, b: u16) -> String {
+fn rgb_to_hex(r: u8, g: u8, b: u8) -> String {
     format!("#{:02X}{:02X}{:02X}",r, g, b)
 }
 // there is an EXTREMELY weird bug where the "if(a > 1)" rings true immediately after we enter a transparency area (even though it's now 0), and I cannot for the life of me find out what it is. maybe one day i will, but it seems the best solution is actually to prevent the program from making any black boxes, and PNGs will need to be modified to use extremely dark greys (254,254,254) instead.
