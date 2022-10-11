@@ -1,8 +1,11 @@
+extern crate derive_more;
+
 use std::env;
 use std::fmt::Write;
 use std::io::{Error};
 use regex::Regex;
 use image::{GenericImageView};
+use derive_more::IntoIterator;
 
 fn main() {
     let mut svg_files = vec![String::from(""); 1];
@@ -32,9 +35,6 @@ struct SVGDef {
     pub contents: String, // todo: proper svg object 
 }
 impl SVGDef {
-    fn new(id: i32, c: String) -> SVGDef {
-        SVGDef{i: id, contents: c}
-    }
     fn to_string(&mut self) -> String {
         format!("<g id='{}'>{}</g>",&self.i, &self.contents.replace("\n", ""))
     }
@@ -43,20 +43,15 @@ impl SVGDef {
     }
 }
 
+#[derive(IntoIterator)]
 struct SVGDefs {
+    #[into_iterator(ref)]
     defs: Vec<SVGDef>,
-
-    cur: usize,
-    next: usize,
 }
 
 impl SVGDefs {
     fn new() -> SVGDefs {
-        SVGDefs{
-            defs: vec![SVGDef::new(0, "".to_string()); 0],
-            cur: 0,
-            next: 1,
-        }
+        SVGDefs{defs: Vec::<SVGDef>::new()}
     }
     fn contains(&self, c: &String) -> Option<SVGDef> {
         // todo: there's probably a good one liner i can do here
@@ -73,23 +68,6 @@ impl SVGDefs {
             contents: c.clone(),
         });
     }
-}
-
-impl Iterator for SVGDefs {
-    type Item = SVGDef;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.cur;
-
-        self.cur = self.next;
-        self.next = current + 1;
-
-        match self.defs.get(current) {
-            Some(a) => Some(a.clone()),
-            None => None,
-        }
-    }
-
 }
 
 fn svg_from_file(file: String) -> Result<String, Error> {
@@ -123,6 +101,7 @@ fn svg_from_file(file: String) -> Result<String, Error> {
                 // or the width of what we have is larger then the image,
                 // make a new box
                 if r != last_r && g != last_g && b != last_b {
+                    // first though, check if there's a definition that matches they box.
                     svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
                     making_box = false;
                     cur_width = 1;
@@ -137,7 +116,19 @@ fn svg_from_file(file: String) -> Result<String, Error> {
         }
         // if we were making a box, make what we have and move on.
         if making_box {
-            svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
+            let line = new_box_without_pos(cur_width, last_r, last_g, last_b);
+            // first though, check if there's a definition that matches they box.
+            match svg_defs.contains(&line) {
+                // if there is a line...
+                Some(mut a) => {
+                    svg_lines.push(a.to_use_string(last_x,last_y));
+                },
+                // if there isn't.
+                None => {
+                    svg_defs.add(&line);
+                    svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
+                }
+            };
             making_box = false;
             cur_width = 1;
             (last_x, last_y) = (0,y);
