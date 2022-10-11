@@ -7,6 +7,8 @@ use regex::Regex;
 use image::{GenericImageView};
 use derive_more::IntoIterator;
 
+// TODO: proper svg package
+
 fn main() {
     let mut svg_files = vec![String::from(""); 1];
     let files = get_files();
@@ -107,10 +109,10 @@ fn svg_from_file(file: String) -> Result<String, Error> {
                 // if what we have is different from what is stored, 
                 // or the width of what we have is larger then the image,
                 // make a new box
-                if r != last_r || g != last_g || b != last_b || 
+                if r != last_r || g != last_g || b != last_b || a != last_a ||
                     cur_width+last_x >= width {
                     // first though, check if there's a definition that matches they box.
-                    svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
+                    svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, Some(&mut svg_defs)));
                     cur_width = 1;
                     (last_r, last_g, last_b, last_a) = (r, g, b, a);
                     (last_x, last_y) = (x,y);
@@ -129,11 +131,25 @@ fn svg_from_file(file: String) -> Result<String, Error> {
 
     _ = string_buffer.write_str("<defs>");
     for mut def in svg_defs {
-        _ = string_buffer.write_str(def.to_string().as_str());
+        // hack: singular black dots with an id of 0 shouldn't be added,
+        // due to a bug I can't seem to find in transparent images.
+        if def.i == 0 && def.contents.eq(&new_box_without_pos(1, 0, 0, 0)) {
+            continue;
+        } else {
+            _ = string_buffer.write_str(def.to_string().as_str());
+        }
+        
     };
     _ = string_buffer.write_str("</defs>");
+    let mut i = 0;
     for line in svg_lines {
-        _ = string_buffer.write_str(&line);
+        // same hack as described above
+        if i == 0 && line.eq(&new_box(1, 0, 0, 0, 0, 0, None)) {
+            continue;
+        } else {
+            _ = string_buffer.write_str(&line);
+            i += 1;
+        }
     };
     _ = string_buffer.write_str("</svg>");
 
@@ -148,18 +164,34 @@ fn get_files() -> Vec<String> {
     }).collect()
 }
 
-fn new_box(width: u32, x: u32, y: u32, r: u8, g: u8, b: u8, svg_defs: &mut SVGDefs) -> String {
+fn new_box(width: u32, x: u32, y: u32, r: u8, g: u8, b: u8, svg_defs: Option<&mut SVGDefs>) -> String {
     let line = new_box_without_pos(width, r, g, b);
-    match svg_defs.contains(&line) {
-        // if there is a line...
-        Some(mut a) => {
-            a.to_use_string(x,y)
-        },
-        // if there isn't.
+    
+    match svg_defs {
+        Some(a) => {
+            match a.contains(&line) {
+                // if there is a line...
+                Some(mut a) => {
+                    // hack: singular black dots with an id of 0 should be removed,
+                    // due to a bug I can't seem to find in transparent images.
+                    if a.i == 0 && width == 1 && r == 0 && g == 0 && b == 0 {
+                        "".to_string()
+                    } else {
+                        a.to_use_string(x,y)
+                    }
+                    
+                },
+                // if there isn't.
+                None => {
+                    a.add(&line);
+                    format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>",
+                width as f32+0.2,1.2,x,y,rgb_to_hex(r,g,b))
+                }
+            }
+        }
         None => {
-            svg_defs.add(&line);
             format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>",
-        width as f32+0.2,1.2,x,y,rgb_to_hex(r,g,b))
+                width as f32+0.2,1.2,x,y,rgb_to_hex(r,g,b))
         }
     }
     
@@ -174,4 +206,3 @@ fn new_box_without_pos(width: u32, r: u8, g: u8, b: u8) -> String {
 fn rgb_to_hex(r: u8, g: u8, b: u8) -> String {
     format!("#{:02X}{:02X}{:02X}",r, g, b)
 }
-// there is an EXTREMELY weird bug where the "if(a > 1)" rings true immediately after we enter a transparency area (even though it's now 0), and I cannot for the life of me find out what it is. maybe one day i will, but it seems the best solution is actually to prevent the program from making any black boxes, and PNGs will need to be modified to use extremely dark greys (254,254,254) instead.
