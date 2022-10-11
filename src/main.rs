@@ -88,8 +88,6 @@ fn svg_from_file(file: String) -> Result<String, Error> {
     
     let mut compare_to_last: bool = false;
 
-    let mut making_box: bool = false;
-
     for y in 0..height {
         for x in 0..width {
             let pixels = img.get_pixel(x, y);
@@ -109,28 +107,18 @@ fn svg_from_file(file: String) -> Result<String, Error> {
                 // if what we have is different from what is stored, 
                 // or the width of what we have is larger then the image,
                 // make a new box
-                if r != last_r || g != last_g || b != last_b {
+                if r != last_r || g != last_g || b != last_b || 
+                    cur_width+last_x >= width {
                     // first though, check if there's a definition that matches they box.
                     svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
-                    making_box = false;
                     cur_width = 1;
                     (last_r, last_g, last_b, last_a) = (r, g, b, a);
                     (last_x, last_y) = (x,y);
                 // otherwise, increase that width value that we have until we get a new box.
                 } else {
-                    making_box = true;
                     cur_width += 1;
                 }
             };
-        }
-        // if we were making a box, make what we have and move on.
-        if making_box {
-            svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
-            making_box = false;
-            cur_width = 1;
-            (last_r, last_g, last_b, last_a) = (0,0,0,0);
-            compare_to_last = true;
-            (last_x, last_y) = (0,y);
         }
     };
 
