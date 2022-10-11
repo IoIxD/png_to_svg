@@ -38,10 +38,10 @@ impl SVGDef {
         SVGDef{i: id, contents: c}
     }
     fn to_string(&mut self) -> String {
-        format!("<g id='{}'>{}</g>\n",&self.i, &self.contents.replace("\n", ""))
+        format!("<g id='{}'>{}</g>",&self.i, &self.contents.replace("\n", ""))
     }
     fn to_use_string(&mut self, x: u32, y: u32) -> String {
-        format!("<use x='{}' y='{}' href='#{}'></use>\n",x,y,&self.i)
+        format!("<use x='{}' y='{}' href='#{}'></use>",x,y,&self.i)
     }
 }
 
@@ -197,14 +197,14 @@ fn svg_from_file(file: String) -> Result<String, Error> {
 
     // buffer for the svg code.
     let mut string_buffer = String::from(
-        format!("<svg viewBox='0 0 {} {}' xmlns='http://www.w3.org/2000/svg'>\n",width,height)
+        format!("<svg viewBox='0 0 {} {}' xmlns='http://www.w3.org/2000/svg'>",width,height)
     );
 
-    _ = string_buffer.write_str("<defs>\n");
+    _ = string_buffer.write_str("<defs>");
     for mut def in svg_defs {
         _ = string_buffer.write_str(def.to_string().as_str());
     };
-    _ = string_buffer.write_str("</defs>\n");
+    _ = string_buffer.write_str("</defs>");
     for line in svg_lines {
         _ = string_buffer.write_str(&line);
     };
@@ -225,7 +225,7 @@ fn new_box(width: u32, x: u32, y: u32, r: u16, g: u16, b: u16) -> String {
     if r+g+b >= 255*3 {
         format!("")
     } else {
-        format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>\n",
+        format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>",
             width as f32+0.1,1.1,x,y,rgb_to_hex(r,g,b))
     }
     
@@ -245,7 +245,7 @@ fn new_box_without_pos(width: u32, r: u16, g: u16, b: u16) -> String {
     if r+g+b >= 255*3 {
         format!("")
     } else {
-        format!("<rect width='{}' height='{}' fill='{}'></rect>\n",
+        format!("<rect width='{}' height='{}' fill='{}'></rect>",
             width,1.1,rgb_to_hex(r,g,b))
     }
 }
