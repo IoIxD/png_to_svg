@@ -13,7 +13,9 @@ This is an inheriently bad solution due to the file size (3 times bigger then a 
 # Compiling
 
 `cd ~/Projects/PNGToSVG`
+
 `cargo run <one or more files>` or `cargo build --release`
+
 i fucking love rust
 
 to compile to all the supported platforms
@@ -23,6 +25,4 @@ cargo build --release --target=i686-unknown-linux-gnu
 cargo build --release --target=x86_64-unknown-linux-gnu
 cargo build --release --target=i686-pc-windows-gnu
 cargo build --release --target=x86_64-pc-windows-gnu
-cargo build --release --target=aarch64-unknown-linux-gnu
-cargo build --release --target=x86_64-apple-darwin
 ```
