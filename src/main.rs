@@ -2,15 +2,20 @@ extern crate derive_more;
 
 use std::env;
 use std::fmt::Write;
+use std::fs;
 use std::io::{Error};
+use lazy_static::lazy_static;
 use regex::Regex;
 use image::{GenericImageView};
 use derive_more::IntoIterator;
 
+lazy_static! {
+    static ref VALID_TYPES: Regex = Regex::new(r"\.(png|jpeg|jpg)$").unwrap();
+}
+
 // TODO: proper svg package
 
 fn main() {
-    let mut svg_files = vec![String::from(""); 1];
     let files = get_files();
 
     if files.len() <= 0 {
@@ -19,16 +24,20 @@ fn main() {
     }
     
     for file in files {
-        let f = match svg_from_file(file) {
-            Ok(a) => a,
+        match svg_from_file(&file) {
+            Ok(a) => {
+                let newname = format!("{}.svg",VALID_TYPES.replace(&file, ""));
+                println!("{} -> {}",&file, &newname);
+                fs::write(newname, a)
+                .expect(format!("failed to save file {}!",file).as_str());
+            },
             Err(err) => {
                 println!("{}", err);
                 continue;
             }
         };
-        svg_files.push(f);
+        
     }
-    println!("{}",svg_files.concat());
 }
 
 #[derive(Clone)]
@@ -72,7 +81,7 @@ impl SVGDefs {
     }
 }
 
-fn svg_from_file(file: String) -> Result<String, Error> {
+fn svg_from_file(file: &String) -> Result<String, Error> {
     let img = match image::open(file) {
         Ok(a) => a,
         Err(err) => panic!("Unable to open file; {}",err),
@@ -157,10 +166,8 @@ fn svg_from_file(file: String) -> Result<String, Error> {
 }
 
 fn get_files() -> Vec<String> {
-    let valid_types = Regex::new(r"\.(png|jpeg|jpg)$").unwrap();
-
     env::args().into_iter().filter(|i| {
-        valid_types.find(i).is_some()
+        VALID_TYPES.find(i).is_some()
     }).collect()
 }
 
