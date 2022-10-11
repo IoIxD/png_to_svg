@@ -113,7 +113,7 @@ fn svg_from_file(file: String) -> Result<String, Error> {
             let info = reader.next_frame(&mut buf).expect("failed to decode png");
             let what: Option<RgbaImage>;
             // Is it an RGB or an RGBA array?
-            if (info.width*info.height*3) % buf.len() as u32 != 1 { // if rgb...
+            if (info.width*info.height*3) % buf.len() as u32 <= 0 { // if rgb...
                 what = match RgbImage::from_raw(info.width, info.height, buf) {
                     Some(a) => rgbimage_to_rgbaimage(a),
                     None => None
@@ -143,8 +143,6 @@ fn svg_from_file(file: String) -> Result<String, Error> {
     let mut svg_defs = SVGDefs::new();
 
     // buffer for storing the last rgb value we got.
-    // we store them in 16-bit values so that we can initialize them with something
-    // that will never match the first pixel.
     let (mut last_r, mut last_g, mut last_b, mut last_a): (u16, u16, u16, u16)
      = (300, 300, 300, 300);
     let mut cur_width: u32 = 1;
@@ -156,7 +154,7 @@ fn svg_from_file(file: String) -> Result<String, Error> {
             let (r, g, b, a) = (pixels[0] as u16, pixels[1] as u16, 
                                 pixels[2] as u16, pixels[3] as u16);
             // don't process shit if we're on a transparent pixel
-            if a > 1 {
+            if a > 0 {
                 // if what we have is different from what is stored, 
                 // or the width of what we have is larger then the image,
                 // make a new box
@@ -168,7 +166,6 @@ fn svg_from_file(file: String) -> Result<String, Error> {
                         // if there is a line...
                         Some(mut a) => {
                             svg_lines.push(a.to_use_string(last_x,last_y));
-                            
                         },
                         // if there isn't.
                         None => {
@@ -226,7 +223,7 @@ fn new_box(width: u32, x: u32, y: u32, r: u16, g: u16, b: u16) -> String {
         format!("")
     } else {
         format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>",
-            width as f32+0.1,1.1,x,y,rgb_to_hex(r,g,b))
+            width as f32+0.2,1.2,x,y,rgb_to_hex(r,g,b))
     }
     
 }
