@@ -180,6 +180,7 @@ fn new_box_without_pos(width: u32, r: u16, g: u16, b: u16) -> String {
     }
 }
 
+#[inline(always)]
 fn rgb_to_hex(r: u16, g: u16, b: u16) -> String {
     format!("#{:02X}{:02X}{:02X}",r, g, b)
 }
