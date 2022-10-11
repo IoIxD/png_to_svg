@@ -3,7 +3,7 @@ use std::fmt::Write;
 use std::io::{Error,ErrorKind};
 use std::fs::File;
 use regex::Regex;
-use image::{Rgb, Rgba, RgbImage, RgbaImage};
+use image::{RgbImage};
 use jpeg_decoder as jpeg;
 
 fn main() {
@@ -105,23 +105,14 @@ fn svg_from_file(file: String) -> Result<String, Error> {
     };
     // decode the file into an RgbImage based on what we got.
     let file_ext = Regex::new(r"\.[a-z]{1,4}$").unwrap().find(&file_).unwrap().as_str();
-    let img: RgbaImage = match file_ext {
+    let img: RgbImage = match file_ext {
         ".png" => {
             let decoder = png::Decoder::new(f);
             let mut reader = decoder.read_info().expect("failed to gen reader");
             let mut buf = vec![0; reader.output_buffer_size()];
             let info = reader.next_frame(&mut buf).expect("failed to decode png");
-            let what: Option<RgbaImage>;
-            // Is it an RGB or an RGBA array?
-            if (info.width*info.height*3) % buf.len() as u32 <= 0 { // if rgb...
-                what = match RgbImage::from_raw(info.width, info.height, buf) {
-                    Some(a) => rgbimage_to_rgbaimage(a),
-                    None => None
-                };
-            } else {
-                what = RgbaImage::from_raw(info.width, info.height, buf);
-            }
-            match what {
+            // todo: find out how to support RgbaImage
+            match RgbImage::from_raw(info.width, info.height, buf) {
                 Some(a) => a,
                 None => panic!("from_raw returns none!")
             }
@@ -130,7 +121,7 @@ fn svg_from_file(file: String) -> Result<String, Error> {
             let mut decoder = jpeg::Decoder::new(f);
             let buf = decoder.decode().expect("failed to decode jpeg");
             let info = decoder.info().expect("failed to get image info");
-            RgbaImage::from_raw(info.width as u32, info.height as u32, buf).unwrap()
+            RgbImage::from_raw(info.width as u32, info.height as u32, buf).unwrap()
         }
         _ => { // we should never reach this!
             return Err(Error::new(ErrorKind::Unsupported,format!("attempted to convert invalid type '{}'.",file_ext)));
@@ -151,10 +142,17 @@ fn svg_from_file(file: String) -> Result<String, Error> {
     for y in 0..height {
         for x in 0..width {
             let pixels = img.get_pixel(x, y);
-            let (r, g, b, a) = (pixels[0] as u16, pixels[1] as u16, 
-                                pixels[2] as u16, pixels[3] as u16);
+            let (r, g, b) = (pixels[0] as u16, pixels[1] as u16, 
+                                pixels[2] as u16);
+            let a;
+            if r == 255 && g == 255 && b == 255 {
+                a = 0;
+            } else {
+                a = 1;
+            }
             // don't process shit if we're on a transparent pixel
-            if a > 0 {
+            // (unless that last pixel we checked wasn't transparento)
+            if a > 0 || last_a > 0 {
                 // if what we have is different from what is stored, 
                 // or the width of what we have is larger then the image,
                 // make a new box
@@ -179,14 +177,6 @@ fn svg_from_file(file: String) -> Result<String, Error> {
                 // otherwise, increase that width value that we have until we get a new box.
                 } else {
                     cur_width += 1;
-                }
-            // unless that last pixel we checked wasn't transparent
-            } else {
-                if last_a > 1 {
-                    svg_lines.push(new_box(cur_width, last_x, last_y, r, g, b));
-                    cur_width = 1;
-                    (last_r, last_g, last_b, last_a) = (r, g, b, a);
-                    (last_x, last_y) = (x,y);
                 }
             };
         }
@@ -226,16 +216,6 @@ fn new_box(width: u32, x: u32, y: u32, r: u16, g: u16, b: u16) -> String {
             width as f32+0.2,1.2,x,y,rgb_to_hex(r,g,b))
     }
     
-}
-
-fn rgbimage_to_rgbaimage(img: RgbImage) -> Option<RgbaImage> {
-    Some(RgbaImage::from_fn(img.width(), img.height(), |x, y| {
-        let col = match img.get_pixel_checked(x,y) {
-            Some(a) => a,
-            None => &Rgb([0_u8,0_u8,0_u8]),
-        };
-        Rgba([col[0],col[1],col[2],255])
-    }))
 }
 
 fn new_box_without_pos(width: u32, r: u16, g: u16, b: u16) -> String {
