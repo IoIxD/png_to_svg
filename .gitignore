@@ -26,3 +26,8 @@ go.work
 *.html
 main
 images/
+
+
+# Added by cargo
+
+/target
