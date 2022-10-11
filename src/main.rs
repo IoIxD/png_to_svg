@@ -222,8 +222,13 @@ fn get_files() -> Vec<String> {
 }
 
 fn new_box(width: u32, x: u32, y: u32, r: u16, g: u16, b: u16) -> String {
-    format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>\n",
+    if r+g+b >= 255*3 {
+        format!("")
+    } else {
+        format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>\n",
             width as f32+0.1,1.1,x,y,rgb_to_hex(r,g,b))
+    }
+    
 }
 
 fn rgbimage_to_rgbaimage(img: RgbImage) -> Option<RgbaImage> {
@@ -237,8 +242,12 @@ fn rgbimage_to_rgbaimage(img: RgbImage) -> Option<RgbaImage> {
 }
 
 fn new_box_without_pos(width: u32, r: u16, g: u16, b: u16) -> String {
-    format!("<rect width='{}' height='{}' fill='{}'></rect>\n",
+    if r+g+b >= 255*3 {
+        format!("")
+    } else {
+        format!("<rect width='{}' height='{}' fill='{}'></rect>\n",
             width,1.1,rgb_to_hex(r,g,b))
+    }
 }
 
 fn rgb_to_hex(r: u16, g: u16, b: u16) -> String {
