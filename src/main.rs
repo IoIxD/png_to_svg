@@ -29,7 +29,7 @@ fn main() {
     println!("{}",svg_files.concat());
 }
 
-#[derive(Clone,Debug)]
+#[derive(Clone)]
 struct SVGDef {
     pub i: i32,
     pub contents: String, // todo: proper svg object 
@@ -116,23 +116,11 @@ fn svg_from_file(file: String) -> Result<String, Error> {
         }
         // if we were making a box, make what we have and move on.
         if making_box {
-            let line = new_box_without_pos(cur_width, last_r, last_g, last_b);
-            // first though, check if there's a definition that matches they box.
-            match svg_defs.contains(&line) {
-                // if there is a line...
-                Some(mut a) => {
-                    svg_lines.push(a.to_use_string(last_x,last_y));
-                },
-                // if there isn't.
-                None => {
-                    svg_defs.add(&line);
-                    svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
-                }
-            };
+            svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
             making_box = false;
             cur_width = 1;
+            (last_r, last_g, last_b, last_a) = (300, 300, 300, 300);
             (last_x, last_y) = (0,y);
-            (last_r, last_g, last_b, last_a) = (255,255,255,0);
         }
     };
 
@@ -188,7 +176,7 @@ fn new_box_without_pos(width: u32, r: u16, g: u16, b: u16) -> String {
         format!("")
     } else {
         format!("<rect width='{}' height='{}' fill='{}'></rect>",
-            width,1.1,rgb_to_hex(r,g,b))
+            width as f32+0.2,1.2,rgb_to_hex(r,g,b))
     }
 }
 
