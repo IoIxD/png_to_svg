@@ -413,8 +413,6 @@ name = "png_to_svg"
 version = "0.1.0"
 dependencies = [
  "image",
- "jpeg-decoder",
- "png",
  "regex",
  "svg",
 ]

@@ -6,9 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-"png" = "0.17"
 "regex" = "1.6"
 "svg" = "0.10"
-
 "image" = "0.24"
-"jpeg-decoder" = "0.2"

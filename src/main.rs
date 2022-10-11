@@ -1,10 +1,8 @@
 use std::env;
 use std::fmt::Write;
-use std::io::{Error,ErrorKind};
-use std::fs::File;
+use std::io::{Error};
 use regex::Regex;
-use image::{RgbImage};
-use jpeg_decoder as jpeg;
+use image::{GenericImageView};
 
 fn main() {
     let mut svg_files = vec![String::from(""); 1];
@@ -95,37 +93,9 @@ impl Iterator for SVGDefs {
 }
 
 fn svg_from_file(file: String) -> Result<String, Error> {
-    let file_ = file.clone();
-    let f: File = match File::open(file) {
+    let img = match image::open(file) {
         Ok(a) => a,
-        Err(err) => {
-            println!("failed to open file: {}",err);
-            return Err(err);
-        }
-    };
-    // decode the file into an RgbImage based on what we got.
-    let file_ext = Regex::new(r"\.[a-z]{1,4}$").unwrap().find(&file_).unwrap().as_str();
-    let img: RgbImage = match file_ext {
-        ".png" => {
-            let decoder = png::Decoder::new(f);
-            let mut reader = decoder.read_info().expect("failed to gen reader");
-            let mut buf = vec![0; reader.output_buffer_size()];
-            let info = reader.next_frame(&mut buf).expect("failed to decode png");
-            // todo: find out how to support RgbaImage
-            match RgbImage::from_raw(info.width, info.height, buf) {
-                Some(a) => a,
-                None => panic!("from_raw returns none!")
-            }
-        }
-        ".jpeg" | ".jpg" => {
-            let mut decoder = jpeg::Decoder::new(f);
-            let buf = decoder.decode().expect("failed to decode jpeg");
-            let info = decoder.info().expect("failed to get image info");
-            RgbImage::from_raw(info.width as u32, info.height as u32, buf).unwrap()
-        }
-        _ => { // we should never reach this!
-            return Err(Error::new(ErrorKind::Unsupported,format!("attempted to convert invalid type '{}'.",file_ext)));
-        }
+        Err(err) => panic!("Unable to open file; {}",err),
     };
 
     let (width, height) = (img.width(),img.height());
@@ -139,46 +109,39 @@ fn svg_from_file(file: String) -> Result<String, Error> {
     let mut cur_width: u32 = 1;
     let (mut last_x, mut last_y): (u32, u32) = (0,0);
 
+    let mut making_box: bool = false;
+
     for y in 0..height {
         for x in 0..width {
             let pixels = img.get_pixel(x, y);
-            let (r, g, b) = (pixels[0] as u16, pixels[1] as u16, 
-                                pixels[2] as u16);
-            let a;
-            if r == 255 && g == 255 && b == 255 {
-                a = 0;
-            } else {
-                a = 1;
-            }
+            let (r, g, b, a) = (pixels[0] as u16, pixels[1] as u16, 
+                                pixels[2] as u16, pixels[3] as u16);
             // don't process shit if we're on a transparent pixel
             // (unless that last pixel we checked wasn't transparento)
             if a > 0 || last_a > 0 {
                 // if what we have is different from what is stored, 
                 // or the width of what we have is larger then the image,
                 // make a new box
-                if r != last_r && g != last_g && b != last_b || 
-                    cur_width+last_x > width {
-                    let line = new_box_without_pos(cur_width, last_r, last_g, last_b);
-                    // first though, check if there's a definition that matches they box.
-                    match svg_defs.contains(&line) {
-                        // if there is a line...
-                        Some(mut a) => {
-                            svg_lines.push(a.to_use_string(last_x,last_y));
-                        },
-                        // if there isn't.
-                        None => {
-                            svg_defs.add(&line);
-                            svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b));
-                        }
-                    };
+                if r != last_r && g != last_g && b != last_b {
+                    svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
+                    making_box = false;
                     cur_width = 1;
                     (last_r, last_g, last_b, last_a) = (r, g, b, a);
                     (last_x, last_y) = (x,y);
                 // otherwise, increase that width value that we have until we get a new box.
                 } else {
+                    making_box = true;
                     cur_width += 1;
                 }
             };
+        }
+        // if we were making a box, make what we have and move on.
+        if making_box {
+            svg_lines.push(new_box(cur_width, last_x, last_y, last_r, last_g, last_b, &mut svg_defs));
+            making_box = false;
+            cur_width = 1;
+            (last_x, last_y) = (0,y);
+            (last_r, last_g, last_b, last_a) = (255,255,255,0);
         }
     };
 
@@ -208,12 +171,23 @@ fn get_files() -> Vec<String> {
     }).collect()
 }
 
-fn new_box(width: u32, x: u32, y: u32, r: u16, g: u16, b: u16) -> String {
+fn new_box(width: u32, x: u32, y: u32, r: u16, g: u16, b: u16, svg_defs: &mut SVGDefs) -> String {
     if r+g+b >= 255*3 {
         format!("")
     } else {
-        format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>",
+        let line = new_box_without_pos(width, r, g, b);
+        match svg_defs.contains(&line) {
+            // if there is a line...
+            Some(mut a) => {
+                a.to_use_string(x,y)
+            },
+            // if there isn't.
+            None => {
+                svg_defs.add(&line);
+                format!("<rect width='{}' height='{}' x='{}' y='{}' fill='{}'></rect>",
             width as f32+0.2,1.2,x,y,rgb_to_hex(r,g,b))
+            }
+        }
     }
     
 }
